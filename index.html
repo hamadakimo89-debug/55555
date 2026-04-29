@@ -2,40 +2,42 @@
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة باقات الموبايل - سحابي</title>
+    <title>إدارة باقات الموبايل - سحابي احترافي</title>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
-        .container { max-width: 400px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        input, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-        button { background: #3182ce; color: white; border: none; cursor: pointer; }
-        .item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; align-items: center; }
-        .delete-btn { color: red; font-weight: bold; cursor: pointer; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .hidden { display: none; }
+        input, button, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; }
+        button { background: #3182ce; color: white; cursor: pointer; }
+        .item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px; }
     </style>
 </head>
 <body>
 
+    <!-- جزء الدخول -->
     <div id="auth-section" class="container">
         <h2>تسجيل الدخول</h2>
-        <input type="email" id="email" placeholder="البريد الإلكتروني">
+        <input type="email" id="email" placeholder="البريد">
         <input type="password" id="pass" placeholder="كلمة السر">
         <button onclick="login()">دخول</button>
         <button onclick="register()">حساب جديد</button>
     </div>
 
-    <div id="app-section" class="container" style="display:none;">
-        <h3>مرحباً بك!</h3>
+    <!-- واجهة البرنامج الغنية -->
+    <div id="app-section" class="container hidden">
+        <h1>🚀 إدارة باقات الموبايل</h1>
         <button onclick="logout()">خروج</button>
         <hr>
-        <input type="text" id="ownerName" placeholder="اسم صاحب الرقم">
-        <input type="text" id="phone" placeholder="رقم الهاتف">
-        <button type="button" onclick="saveData()">إضافة حجز</button>
+        <input type="text" id="ownerName" placeholder="اسم العميل">
+        <input type="text" id="phone" placeholder="رقم الموبايل">
+        <select id="network"><option>فودافون</option><option>أورانج</option></select>
+        <button onclick="saveData()">إضافة حجز</button>
         <div id="list"></div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, where, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -46,45 +48,43 @@
             messagingSenderId: "896182366021",
             appId: "1:896182366021:web:c4580b74677e558052d82c"
         };
-
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('auth-section').style.display = 'none';
-                document.getElementById('app-section').style.display = 'block';
-                loadData(user.uid);
+        onAuthStateChanged(auth, (u) => {
+            if(u) {
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('app-section').classList.remove('hidden');
+                loadData(u.uid);
             } else {
-                document.getElementById('auth-section').style.display = 'block';
-                document.getElementById('app-section').style.display = 'none';
+                document.getElementById('auth-section').classList.remove('hidden');
+                document.getElementById('app-section').classList.add('hidden');
             }
         });
 
         window.login = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('pass').value);
         window.register = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('pass').value);
         window.logout = () => signOut(auth);
-        
+
         window.saveData = async () => {
-            const name = document.getElementById('ownerName').value;
-            const phone = document.getElementById('phone').value;
-            if(name && phone) {
-                await addDoc(collection(db, "data"), { name, phone, uid: auth.currentUser.uid });
-                document.getElementById('ownerName').value = '';
-                document.getElementById('phone').value = '';
-            }
+            await addDoc(collection(db, "bookings"), {
+                name: document.getElementById('ownerName').value,
+                phone: document.getElementById('phone').value,
+                network: document.getElementById('network').value,
+                uid: auth.currentUser.uid
+            });
         };
 
-        window.deleteItem = async (id) => await deleteDoc(doc(db, "data", id));
+        window.deleteItem = async (id) => await deleteDoc(doc(db, "bookings", id));
 
         function loadData(uid) {
-            onSnapshot(query(collection(db, "data"), where("uid", "==", uid)), (snap) => {
-                let html = '';
+            onSnapshot(query(collection(db, "bookings"), where("uid", "==", uid)), (snap) => {
+                let html = '<h3>قائمة الحجوزات:</h3>';
                 snap.forEach(d => {
                     html += `<div class="item">
-                        <span><strong>${d.data().name}</strong>: ${d.data().phone}</span>
-                        <span class="delete-btn" onclick="deleteItem('${d.id}')">× حذف</span>
+                        <span>${d.data().name} | ${d.data().phone} | ${d.data().network}</span>
+                        <span onclick="deleteItem('${d.id}')" style="color:red; cursor:pointer">× حذف</span>
                     </div>`;
                 });
                 document.getElementById('list').innerHTML = html;
